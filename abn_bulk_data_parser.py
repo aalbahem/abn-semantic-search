@@ -1,0 +1,39 @@
+import os
+from bs4 import BeautifulSoup
+
+def walk_and_parse(data_dir):
+    for root, dirs, files in os.walk(data_dir):
+        for filename in files:
+            if filename.endswith('.xml'):
+                file_path = os.path.join(root, filename)
+                with open(file_path, 'r', encoding='utf-8') as file:
+                    soup = BeautifulSoup(file, 'xml')
+                    # Not efficient, we should try to use a streaming parser.
+                    abrs = soup.find_all('abr')
+
+                    for abr in abrs:
+                        yield extract_entity_info(abr)
+
+
+def extract_entity_info(abr_element):
+    company_name_tag = abr_element.find_all('nonindividualnametext'.lower())
+    company_name = company_name_tag[0].text if company_name_tag else "Unknown"
+
+    bussiness_address = abr_element.find_all('businessaddress')[0] # usig now only the first business address
+
+    state_tag = bussiness_address.find_next('state')
+    state = state_tag.text if state_tag else "Unknown"
+
+    postcode_tag = bussiness_address.find_next('postcode')
+    postcode = postcode_tag.text if postcode_tag else "Unknown"
+
+    return {
+        'company_name': company_name,
+        'state': state,
+        'postcode': postcode
+    }
+
+if __name__ == '__main__':
+    data_dir = 'test_data'
+    for entity_info in walk_and_parse(data_dir):
+        print(entity_info)
